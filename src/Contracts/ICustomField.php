@@ -10,5 +10,7 @@ interface ICustomField
 
         public function getValue(): mixed;
 
+
+
         public function toArray(): array;
 }
