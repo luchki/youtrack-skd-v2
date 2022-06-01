@@ -1,5 +1,5 @@
 {
-    "name": "luchki/youtrack_sdk",
+    "name": "luchki/youtrack-sdk",
     "type": "library",
     "description": "SDK для Youtrack, позволяет работать с API youtrack более удобным способом",
     "keywords": [
