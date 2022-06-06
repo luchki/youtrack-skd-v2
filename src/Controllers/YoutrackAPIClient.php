@@ -1,4 +1,5 @@
 <?php
+
 namespace Luchki\YoutrackSDK\Controllers;
 
 use Luchki\YoutrackSDK\Contracts\IIssue;
@@ -17,8 +18,8 @@ class YoutrackAPIClient extends Client implements IYoutrackAPI
 
         public function __construct(
                 ITokenAuthentication $authentication,
-                string $youtrack_base_url,
-                array $config = []
+                string               $youtrack_base_url,
+                array                $config = []
         ) {
                 $auth_config = [
                         'headers' => [
@@ -96,28 +97,7 @@ class YoutrackAPIClient extends Client implements IYoutrackAPI
                 return $new_issue;
         }
 
-        public function getProjectCustomFields(string $project_name): array {
-                $response = $this->request('GET', "issues",
-                        ['query' =>
-                                [
-
-                                        'fields' => 'name,customFields(id,name,$type,value(name,login,text))',
-                                        'query' => "project: {$project_name}",
-                                        '$top' => 1
-                                ],
-                        ]
-                );
-
-                $response_array = current(json_decode($response->getBody(), true))['customFields'];
-
-                return $response_array;
-        }
-
         public function getEnumAvailableValues(string $project_id, string $enum_field_id): array {
-
-//                enum?fields=name,id,values(name,id,description,ordinal),isUpdateable&$top=2
-
-
                 $result = $this->request(
                         'get',
                         "admin/projects/{$project_id}/customFields/{$enum_field_id}/bundle/",
@@ -128,7 +108,7 @@ class YoutrackAPIClient extends Client implements IYoutrackAPI
                                 ]
                         ]
                 );
-                return json_decode($result->getBody(),true)['values'];
+                return json_decode($result->getBody(), true)['values'];
         }
 
         public function getAPIUrl(): string {
@@ -137,5 +117,70 @@ class YoutrackAPIClient extends Client implements IYoutrackAPI
 
         public function getBaseUrl(): string {
                 return $this->youtrack_base_url;
+        }
+
+        private function replaceTypeKeyWithDollarSign(array &$array) {
+                if (array_key_exists('$type', $array)) {
+                        $array['type'] = $array['$type'];
+                }
+
+                foreach ($array as $key => $value) {
+                        if (is_array($value)) {
+                                $this->replaceTypeKeyWithDollarSign($value);
+                                $array[$key] = $value;
+                        }
+                }
+        }
+
+
+        public function requestAndDecode(string $method, $uri = '', array $options = []): ?array {
+                $response = $this->request($method, $uri, $options);
+                return json_decode($response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        }
+
+        public function getIssues(string $youtrack_query): array {
+                $query = [
+                        'fields' => '$type,created,customFields($type,id,name,projectCustomField($type,field($type,fieldType($type,id),id,localizedName,name),id),value($type,id,name,text,value)),description,id,idReadable,links($type,direction,id,linkType($type,id,localizedName,name)),numberInProject,project($type,id,name,shortName),reporter($type,id,login,name,ringId),resolved,summary,updated,updater($type,id,login,name,ringId),usesMarkdown,visibility($type,id,permittedGroups($type,id,name,ringId),permittedUsers($type,id,login,name,ringId))',
+                        'query' => $youtrack_query
+                ];
+
+
+                return $this->requestAndDecode('GET', 'issues', [
+                        'query' => $query
+                ]);
+        }
+
+        public function getProjectCustomFieldsNames(string $project_id): array {
+                $response = $this->requestAndDecode('GET', "admin/projects/{$project_id}",
+                        ['query' =>
+                                [
+
+                                        'fields' => 'customFields(id, name)',
+                                        'query' => '',
+                                ],
+                        ]
+                );
+
+
+                $names = [];
+
+                foreach ($response['customFields'] as $custom_field) {
+                        $custom_field_id = $custom_field['id'];
+
+                        $response = $this->requestAndDecode('GET', "admin/projects/{$project_id}/customFields/{$custom_field_id}",
+                                ['query' =>
+                                        [
+
+                                                'fields' => 'field(name)',
+                                                'query' => '',
+                                        ],
+                                ]
+                        );
+
+                        $names[] = $response['field']['name'];
+
+                }
+
+                return $names;
         }
 }

@@ -15,7 +15,8 @@
     "require": {
         "php": "^8.0",
         "guzzlehttp/guzzle": "^7.4",
-        "doctrine/collections": "^1.6"
+        "doctrine/collections": "^1.6",
+        "vlucas/phpdotenv": "^5.3"
     },
     "require-dev": {
         "ext-json": "*",
